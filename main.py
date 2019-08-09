@@ -8,7 +8,7 @@ api_token = "586911b19bmshbabc3c966931fbbp1cf4c0jsnf5b48f816de9"
 api_url_base = 'https://wft-geo-db.p.rapidapi.com/v1/geo/cities?'
 
 radius = 300
-validCities = {}
+validCities = []
 
 def getNearbyCities(id, rad = radius):
     headers = {'X-RapidAPI-Key' : api_token}
@@ -26,8 +26,7 @@ def getNearbyCities(id, rad = radius):
         print("sucessfull: "  + str(responseMeta["data"]))
 
         for i in range(len(responseMeta)):
-            validCities[0][i] = responseMeta["data"][i]["name"]
-            validCities[1][i] = responseMeta["data"][i]["country"]
+            validCities.append([responseMeta["data"][i]["name"],responseMeta["data"][i]["country"]])
 
         print(validCities)
         return validCities
@@ -188,29 +187,36 @@ def error(bot, update, error):
 def search(bot, update):
     user = update.message.from_user
     userObj = users[update.message.chat_id]
-    userObj.nearbyCities = []
     userObj.nearbyCities = getNearbyCities(update.message.chat_id, rad=radius)
     print(userObj.nearbyCities)
     reply_keyboard= [["💩", "✈"]]
-    update.message.reply_text('How do you like ' + userObj.nearbyCities[0][userObj.i] + '?',
+    update.message.reply_text('How do you like ' + userObj.nearbyCities[userObj.i][0] + '?',
     reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
-    if (len(userObj.nearbyCities[0])==userObj.i):
-        userObj.i=0  
-        return ConversationHandler.END
-    else:
-        return CONV
+    return CONV
+    
 
 
 def searchAnswer(bot, update):
     user = update.message.from_user
     userObj = users[update.message.chat_id]
+
     if (update.message.text == "💩"):
         userObj.dislikedCities.append(userObj.nearbyCities[userObj.i])
     else:
         userObj.likedCities.append(userObj.nearbyCities[userObj.i])
+
     logger.info("%s, %s, %s", user.first_name, update.message.text, userObj.nearbyCities[userObj.i])
     userObj.i+=1
+    
+    reply_keyboard= [["💩", "✈"]]
+    update.message.reply_text('How do you like ' + userObj.nearbyCities[userObj.i][0] + '?',
+    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
+    if (len(userObj.nearbyCities[0])==userObj.i):
+        userObj.i=0  
+        return ConversationHandler.END
+    else:
+        return CONV
 
     
 
