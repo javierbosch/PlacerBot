@@ -7,10 +7,24 @@ import logging
 api_token = "586911b19bmshbabc3c966931fbbp1cf4c0jsnf5b48f816de9"
 api_url_base = 'https://wft-geo-db.p.rapidapi.com/v1/geo/cities?'
 
-radius = 300
-validCities = []
+def getPhoto(city, id):
+    placeSearch= "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" + city + "&key=AIzaSyBsaJ9NkJ8iLYa22-S6jUGUUrJNC4HS84A"    
+    responsePlaceSearch = requests.get(placeSearch)
+    responsePlaceSearchMeta = json.loads(responsePlaceSearch.content.decode('utf-8'))
+    photoID = responsePlaceSearchMeta["results"][0]["photos"][0]["photo_reference"]
+    print(city + " Photo ID: " + photoID)
+    photoSearch = "https://maps.googleapis.com/maps/api/place/photo?maxwidth=500&photoreference=" + photoID + "&key=AIzaSyBsaJ9NkJ8iLYa22-S6jUGUUrJNC4HS84A"
+    image = requests.get(photoSearch)
+    print(image.content)
+    filename = id + "img.jpg"
+    image1 = open(filename, "wb")
+    image1.write(image.content)
+    return filename
 
-def getNearbyCities(id, rad = radius):
+def inList ()
+
+def getNearbyCities(id, rad):
+    validCities =[]
     headers = {'X-RapidAPI-Key' : api_token}
     sign1 = "%2B" if users[id].location[0] > 0 else ""
     sign2 = "%2B" if users[id].location[1] > 0 else ""
@@ -25,32 +39,20 @@ def getNearbyCities(id, rad = radius):
 
         print("sucessfull: "  + str(responseMeta["data"]))
 
-        for i in range(len(responseMeta)):
-            validCities.append([responseMeta["data"][i]["name"],responseMeta["data"][i]["country"]])
+        for i in range(len(responseMeta["data"])):
+            #getPhoto(responseMeta["data"][i]["name"], userID)
+            city = [responseMeta["data"][i]["name"],responseMeta["data"][i]["country"]]
+            userOBj = users[id]
+            if (city not in userOBj.likedCities and city not in userOBj.dislikedCities):
+                validCities.append([responseMeta["data"][i]["name"],responseMeta["data"][i]["country"]])
 
-        print(validCities)
-        return validCities
+    print(validCities)
+    return validCities
 
     else:
         print("API request failed" + str(responseMeta))
         return None
 
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# Simple Bot to reply to Telegram messages
-# This program is dedicated to the public domain under the CC0 license.
-"""
-This Bot uses the Updater class to handle the bot.
-First, a few callback functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-Usage:
-Example of a bot-user conversation using ConversationHandler.
-Send /start to initiate the conversation.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
-"""
 
 class User:
     def __init__(self):
@@ -64,6 +66,7 @@ class User:
         self.dislikedCities = []
         self.newloca = False
         self.i = 0
+        self.radius = 150
     
     def __str__(self):
         return "name: " + self.name + " age: " + self.age + " gender: " + self.gender + " location: " + str(self.location) + " interests: " + self.interests 
@@ -78,11 +81,10 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-AGE, GENDER, LOCATION, INTERESTS, CONV = range(5)
+AGE, GENDER, LOCATION, RADIUS, INTERESTS, CONV, NEW = range(7)
 
 
 def start(bot, update):
-    new_user = update.message.chat_id
     users[update.message.chat_id]=User()
     reply_keyboard = [['Male', 'Female', 'Other']]
     user = update.message.from_user
@@ -111,8 +113,8 @@ def age(bot, update):
         user = update.message.from_user
         logger.info("Age of %s: %s", user.first_name, update.message.text)
         users[update.message.chat_id].age=update.message.text
-        update.message.reply_text('Please send us your location, in order for us to provide you with convenient results and a better user experience'
-                                ' or send /skip.')
+        update.message.reply_text('Please send your location, in order for me to provide you with convenient results and a better user experience')
+                              #  ' or send /skip.')
         return LOCATION
     else:
         update.message.reply_text('Are you sure? What is your real age?')
@@ -120,20 +122,14 @@ def age(bot, update):
     
 
 def location(bot, update):
-    reply_keyboard = [["Nature", "Big cities", "Western culture", "Eastern culture"]]
     user = update.message.from_user
     user_location = update.message.location
     logger.info("Location of %s: %f / %f", user.first_name, user_location.latitude,
                 user_location.longitude)
     users[update.message.chat_id].location=[user_location.latitude, user_location.longitude]
+    update.message.reply_text('Thank you! Please pick your radius. (Between 50-500km)')
 
-    if(users[update.message.chat_id].newloca==True):
-        print(users[update.message.chat_id])
-        update.message.reply_text('If you want to use the Placer Bot go ahead and type /search!')
-        return ConversationHandler.END
-    else:
-        update.message.reply_text('Thank you! Please pick your interests.', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
-        return INTERESTS
+    return RADIUS
 
 
 def skip_location(bot, update):
@@ -144,6 +140,24 @@ def skip_location(bot, update):
 
     return INTERESTS
 
+def radius(bot, update):
+    if (int(update.message.text)>49 and int(update.message.text)<501):
+        user = update.message.from_user
+        logger.info("Radius of %s: %s", user.first_name, update.message.text)
+        users[update.message.chat_id].radius=update.message.text
+            
+        if(users[update.message.chat_id].newloca==True):
+                print(users[update.message.chat_id])
+                update.message.reply_text('If you want to use the Placer Bot go ahead and type /search!')
+                return ConversationHandler.END
+        else:
+            reply_keyboard = [["Nature", "Big cities", "Western culture", "Eastern culture"]]
+            update.message.reply_text('Thank you! Please pick your interests.', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+            return INTERESTS
+        
+    else:
+        update.message.reply_text("I wouldn't use that as a radius, remember it's in kilometers. \nWhy don't you consider a different one?")
+        return RADIUS
 
 def interests(bot, update):
 
@@ -161,12 +175,21 @@ def help(bot, update):
     "/start - to start a conversation with the bot. All your data will be deleted. \n"
     "/newloca - to identify your new location. \n"
     "/search - to use the Placer Bot and to identify cities near you. \n"
+    "/info - to get information about the places you liked. \n"
     "/cancel - to cancel the conversation.")
 
+def info(bot, update):
+    userObj = users[update.message.chat_id]
+    update.message.reply_text("Info! \n")
+    s = ""
+    for i in range(len(userObj.likedCities)):
+        s += userObj.likedCities[i][0] + ", " + userObj.likedCities[i][1] + "\n"
+    update.message.reply_text("Alright, this is the list with the places you already liked: \n" + s, reply_markup=ReplyKeyboardRemove())
 
 def newloca(bot, update):
-    update.message.reply_text('Alright, send us your new location!')
+    update.message.reply_text('Alright, send your new location!')
     users[update.message.chat_id].newloca = True
+    users[update.message.chat_id].nearbyCities=[]
     return LOCATION
 
 
@@ -185,12 +208,11 @@ def error(bot, update, error):
 
 
 def search(bot, update):
-    user = update.message.from_user
     userObj = users[update.message.chat_id]
-    userObj.nearbyCities = getNearbyCities(update.message.chat_id, rad=radius)
+    userObj.nearbyCities = getNearbyCities(update.message.chat_id, rad=userObj.radius)
     print(userObj.nearbyCities)
     reply_keyboard= [["💩", "✈"]]
-    update.message.reply_text('How do you like ' + userObj.nearbyCities[userObj.i][0] + '?',
+    update.message.reply_text('How do you like ' + userObj.nearbyCities[userObj.i][0] + ", " + userObj.nearbyCities[userObj.i][1] +  '?',
     reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
     return CONV
     
@@ -206,17 +228,35 @@ def searchAnswer(bot, update):
         userObj.likedCities.append(userObj.nearbyCities[userObj.i])
 
     logger.info("%s, %s, %s", user.first_name, update.message.text, userObj.nearbyCities[userObj.i])
-    userObj.i+=1
     
-    reply_keyboard= [["💩", "✈"]]
-    update.message.reply_text('How do you like ' + userObj.nearbyCities[userObj.i][0] + '?',
-    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+    if (len(userObj.nearbyCities)-1==userObj.i):
+        logger.info("%s, %s, %s", user.first_name, update.message.text, userObj.nearbyCities[userObj.i])
+        userObj.i=0    
+        reply_keyboard= [["👍", "👎"]]
+        update.message.reply_text("Do you want to see more places?",  reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+        return NEW
+    else:
+        userObj.i+=1
+        reply_keyboard= [["💩", "✈"]]
+        update.message.reply_text('How do you like ' + userObj.nearbyCities[userObj.i][0] + ", " + userObj.nearbyCities[userObj.i][1]+ '?',
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+        return CONV
 
-    if (len(userObj.nearbyCities[0])==userObj.i):
-        userObj.i=0  
+def new_callback (bot, update):
+    userObj = users[update.message.chat_id]
+
+    if (update.message.text == "👍"):
+        update.message.reply_text("Cooooool, just type /newloca and discover new places", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
     else:
-        return CONV
+        update.message.reply_text("Alright, this is the list with the places you already liked:", reply_markup=ReplyKeyboardRemove())
+        s = ""
+        for i in range(len(userObj.likedCities)):
+            s += userObj.likedCities[i][0] + ", " + userObj.likedCities[i][1] + "\n"
+        update.message.reply_text(s + "\n")
+        update.message.reply_text("Type /info to see more information about them")       
+
+        return ConversationHandler.END
 
     
 
@@ -239,6 +279,9 @@ def main():
 
             LOCATION: [MessageHandler(Filters.location, location),
                        CommandHandler('skip', skip_location)],
+
+            RADIUS: [MessageHandler(Filters.text, radius)],
+
             INTERESTS: [RegexHandler('^(Nature|Big cities|Western culture|Eastern culture)$', interests)],
         },
 
@@ -251,6 +294,8 @@ def main():
         states={
             LOCATION: [MessageHandler(Filters.location, location),
                        CommandHandler('skip', skip_location)],
+            
+            RADIUS: [MessageHandler(Filters.text, radius)],
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]
@@ -261,12 +306,14 @@ def main():
 
         states={
             CONV: [RegexHandler('^(✈|💩)$', searchAnswer)],
+            NEW:  [RegexHandler('^(👍|👎)$', new_callback)],
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]
     )
 
     dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("info", info))
     dp.add_handler(conv_handler)
     dp.add_handler(loca_handler)
     dp.add_handler(tinder_handler)
